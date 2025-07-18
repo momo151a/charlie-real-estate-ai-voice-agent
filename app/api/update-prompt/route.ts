@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { UpdatePromptRequest, ElevenLabsAgentConfig } from "../../../types";
 
+function extractAgentName(prompt: string): string {
+  const patterns = [
+    /named\s+(\w+)/i,
+    /agent\s+named\s+(\w+)/i,
+    /I'm\s+(\w+)/i,
+    /my\s+name\s+is\s+(\w+)/i,
+    /called\s+(\w+)/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = prompt.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+
+  return "Charlie";
+}
+
+function generateFirstMessage(agentName: string): string {
+  return `Hello, I am ${agentName}, how can I help you today?`;
+}
+
 export async function POST(req: NextRequest) {
   const { prompt }: UpdatePromptRequest = await req.json();
   const apiKey = process.env.ELEVENLABS_API_KEY;
@@ -14,6 +37,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const agentName = extractAgentName(prompt);
+    const firstMessage = generateFirstMessage(agentName);
+
     const res = await fetch(
       `https://api.elevenlabs.io/v1/convai/agents/${agentId}`,
       {
@@ -27,7 +53,8 @@ export async function POST(req: NextRequest) {
             agent: {
               prompt: {
                 prompt: prompt
-              }
+              },
+              first_message: firstMessage
             }
           }
         } as ElevenLabsAgentConfig),
